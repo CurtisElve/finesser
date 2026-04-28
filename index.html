@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>highAsFuck</title>
+    <style>
+        :root {
+            --ivory: #f9f6f0;
+            --ink: #000000;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html {
+            font-size: 16px;
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 72px 20px 88px;
+            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
+            color: var(--ink);
+            background: var(--ivory);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .bg-stage {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none !important;
+        }
+
+        .bg-stage * {
+            pointer-events: none !important;
+        }
+
+        .bg-base {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 100% 70% at 50% 0%, #fffefb 0%, transparent 55%),
+                linear-gradient(165deg, #f5f2eb 0%, var(--ivory) 40%, #ebe4d8 100%);
+        }
+
+        #trippy-webgl {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        .bg-noise {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            opacity: 0.055;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            mix-blend-mode: overlay;
+            pointer-events: none !important;
+        }
+
+        .bg-vignette {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            background: radial-gradient(ellipse 88% 78% at 50% 50%, transparent 32%, rgba(245, 242, 236, 0.45) 72%, rgba(235, 230, 220, 0.75) 100%);
+            pointer-events: none !important;
+        }
+
+        .hero {
+            position: relative;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            max-width: 38rem;
+            margin: 0 auto;
+            pointer-events: auto;
+        }
+
+        .logo-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            margin-bottom: 18px;
+            border-radius: 38% 62% 58% 42% / 48% 42% 58% 52%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95) 0%, transparent 55%),
+                linear-gradient(145deg, rgba(190, 242, 100, 0.5), rgba(167, 139, 250, 0.45), rgba(62, 207, 184, 0.5));
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 0 24px -4px rgba(62, 207, 184, 0.45),
+                0 0 32px -8px rgba(167, 139, 250, 0.35),
+                0 10px 28px -10px rgba(28, 25, 23, 0.2);
+            font-size: 24px;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.35);
+            animation: logo-pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes logo-pulse {
+            0%, 100% { border-radius: 38% 62% 58% 42% / 48% 42% 58% 52%; filter: brightness(1); }
+            50% { border-radius: 58% 42% 40% 60% / 52% 58% 42% 48%; filter: brightness(1.06); }
+        }
+
+        .brand {
+            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
+            font-size: clamp(1.75rem, 6.5vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.12;
+            min-height: 1.2em;
+            color: var(--ink);
+            text-transform: lowercase;
+            text-shadow:
+                0 0 1px rgba(255, 252, 247, 1),
+                0 0 14px rgba(255, 252, 247, 0.9),
+                0 0 28px rgba(249, 246, 240, 0.7);
+        }
+
+        .typewriter-caret {
+            display: inline-block;
+            width: 2px;
+            height: 0.92em;
+            margin-left: 3px;
+            background: var(--ink);
+            vertical-align: -0.06em;
+            animation: caret-blink 0.95s step-end infinite;
+        }
+
+        @keyframes caret-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .settle-status {
+            margin-top: 16px;
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+            font-size: 0.62rem;
+            line-height: 1.45;
+            color: rgba(0, 0, 0, 0.62);
+            max-width: 100%;
+            word-break: break-word;
+            min-height: 2.5em;
+        }
+
+        .settle-status.err {
+            color: #7a2438;
+        }
+
+        button.btn-outline {
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .btn-outline {
+            display: inline-block;
+            border: 3px solid var(--ink);
+            border-radius: 0;
+            background: transparent;
+            color: var(--ink);
+            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
+            font-weight: 700;
+            text-transform: lowercase;
+            text-decoration: none;
+            cursor: pointer;
+            text-shadow:
+                0 0 1px rgba(255, 252, 247, 1),
+                0 0 12px rgba(255, 252, 247, 0.95),
+                0 0 24px rgba(249, 246, 240, 0.75);
+            transition:
+                color 0.15s ease,
+                background 0.15s ease,
+                opacity 0.35s ease;
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--ink);
+            color: var(--ivory);
+            text-shadow: none;
+        }
+
+        .btn-outline:focus-visible {
+            outline: 2px solid var(--ink);
+            outline-offset: 4px;
+        }
+
+        .btn-outline:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-bracket-connect {
+            position: fixed;
+            z-index: 110;
+            top: max(14px, env(safe-area-inset-top, 0px));
+            right: max(14px, env(safe-area-inset-right, 0px));
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: none;
+            padding: 10px 12px;
+            border: 2px solid var(--ink);
+            border-radius: 0;
+            background: rgba(249, 246, 240, 0.92);
+            color: var(--ink);
+            cursor: pointer;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+        }
+
+        .btn-bracket-connect:hover:not(:disabled) {
+            background: var(--ink);
+            color: var(--ivory);
+        }
+
+        .btn-bracket-connect:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        .btn-enter {
+            margin-top: 26px;
+            padding: 16px 56px;
+            font-size: 0.8125rem;
+            letter-spacing: 0.28em;
+        }
+
+        .page-footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 80;
+            padding: 12px 16px max(12px, env(safe-area-inset-bottom, 0px));
+            pointer-events: none;
+            background: none;
+        }
+
+        .page-footer .legal-line {
+            pointer-events: auto;
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+            font-size: 0.5625rem;
+            line-height: 1.55;
+            letter-spacing: 0.03em;
+            color: rgba(0, 0, 0, 0.72);
+            text-align: center;
+            max-width: 72rem;
+            margin: 0 auto;
+            text-shadow:
+                0 0 1px rgba(255, 252, 247, 1),
+                0 0 12px rgba(255, 252, 247, 0.95),
+                0 0 24px rgba(255, 252, 247, 0.75),
+                0 0 40px rgba(249, 246, 240, 0.55);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .logo-mark { animation: none; }
+            .typewriter-caret { animation: none; opacity: 1; }
+            .btn-outline {
+                transition-duration: 0.01ms;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-stage" aria-hidden="true">
+        <div class="bg-base"></div>
+        <canvas id="trippy-webgl"></canvas>
+        <div class="bg-noise"></div>
+        <div class="bg-vignette"></div>
+    </div>
+
+    <button type="button" class="btn-bracket-connect" id="connect-phantom-btn">[connect phantom]</button>
+
+    <main class="hero">
+        <!-- <div class="logo-mark" aria-hidden="true">◈</div> -->
+        <h1 class="brand" id="brand-typewriter">
+            <span id="typewriter-text" aria-live="polite"></span><span class="typewriter-caret" aria-hidden="true"></span>
+        </h1>
+        <p class="settle-status" id="settle-status"></p>
+        <button type="button" class="btn-outline btn-enter" id="enter-btn" disabled>enter</button>
+    </main>
+
+    <footer class="page-footer" aria-label="Legal">
+        <p class="legal-line">© 2026 highAsFuck.™. Все права защищены. // All rights reserved. //保留所有权利。</p>
+    </footer>
+
+    <script type="module" src="/trippy-scene.bundle.js"></script>
+    <script src="/settle-escrow.bundle.js"></script>
+    <script>
+        (function () {
+            var phrases = [
+                'i am starting a cult',
+                'its called highAsFuck',
+                'you are all my followers',
+                'and i will make you rich',
+                'money isnt real',
+                'its all in your head',
+                'none of this is real',
+                'but its fun to pretend',
+            ];
+            var el = document.getElementById('typewriter-text');
+            if (!el) return;
+
+            var phraseIndex = 0;
+            var charIndex = 0;
+            var deleting = false;
+
+            function tick() {
+                var full = phrases[phraseIndex % phrases.length];
+                if (!deleting) {
+                    charIndex += 1;
+                    el.textContent = full.slice(0, charIndex);
+                    if (charIndex >= full.length) {
+                        deleting = true;
+                        setTimeout(tick, 1900);
+                        return;
+                    }
+                    setTimeout(tick, 52 + Math.random() * 28);
+                    return;
+                }
+                charIndex -= 1;
+                if (charIndex < 0) charIndex = 0;
+                el.textContent = full.slice(0, charIndex);
+                if (charIndex <= 0) {
+                    deleting = false;
+                    phraseIndex += 1;
+                    setTimeout(tick, 520);
+                    return;
+                }
+                setTimeout(tick, 36);
+            }
+
+            setTimeout(tick, 600);
+        })();
+    </script>
+    <script>
+        (function () {
+            var connectBtn = document.getElementById('connect-phantom-btn');
+            var enterBtn = document.getElementById('enter-btn');
+            var statusEl = document.getElementById('settle-status');
+
+            var settleCtx = null;
+            var settleCtxKey = null;
+            var settleInFlight = false;
+
+            function setStatus(msg, isErr) {
+                if (!statusEl) return;
+                statusEl.textContent = msg || '';
+                statusEl.className = 'settle-status' + (isErr ? ' err' : '');
+            }
+
+            function formatTxError(err) {
+                if (err == null) return 'Unknown error';
+                var lines = [err.message || String(err)];
+                var logs = err.logs || err.transactionLogs || (err.simulationResponse && err.simulationResponse.logs);
+                if (Array.isArray(logs) && logs.length) {
+                    lines.push('', '--- simulation logs ---');
+                    for (var i = 0; i < logs.length; i++) lines.push(logs[i]);
+                }
+                return lines.join('\n');
+            }
+
+            function getPhantom() {
+                var s = window.solana;
+                if (s && s.isPhantom) return s;
+                var p = window.phantom && window.phantom.solana;
+                if (p && p.isPhantom) return p;
+                return null;
+            }
+
+            function isLinked(provider) {
+                return !!(provider && provider.isConnected && provider.publicKey);
+            }
+
+            function phantomWallet(phantom) {
+                return {
+                    publicKey: phantom.publicKey,
+                    signTransaction: function (tx) {
+                        return phantom.signTransaction(tx);
+                    },
+                };
+            }
+
+            function getTe() {
+                return globalThis.__timingEscrow;
+            }
+
+            function updateUiConnected(connected) {
+                if (enterBtn) enterBtn.disabled = !connected;
+                if (connectBtn) {
+                    connectBtn.textContent = connected ? '[connected]' : '[connect phantom]';
+                    connectBtn.disabled = false;
+                }
+            }
+
+            function bindProviderEvents(provider) {
+                if (!provider || provider.__hafBound || typeof provider.on !== 'function') return;
+                provider.__hafBound = true;
+                provider.on('disconnect', function () {
+                    settleCtx = null;
+                    settleCtxKey = null;
+                    updateUiConnected(false);
+                    setStatus('');
+                });
+                provider.on('accountChanged', function (pk) {
+                    settleCtx = null;
+                    settleCtxKey = null;
+                    if (!pk) {
+                        updateUiConnected(false);
+                    } else {
+                        updateUiConnected(true);
+                    }
+                });
+            }
+
+            function connectPhantom() {
+                var provider = getPhantom();
+                if (!provider) {
+                    window.open('https://phantom.app/', '_blank', 'noopener,noreferrer');
+                    return Promise.resolve();
+                }
+                bindProviderEvents(provider);
+                if (isLinked(provider)) {
+                    updateUiConnected(true);
+                    return Promise.resolve();
+                }
+                if (connectBtn) connectBtn.disabled = true;
+                return provider
+                    .connect()
+                    .then(function () {
+                        updateUiConnected(true);
+                    })
+                    .catch(function (e) {
+                        setStatus(String((e && e.message) || e), true);
+                        updateUiConnected(false);
+                    })
+                    .then(function () {
+                        if (connectBtn) connectBtn.disabled = false;
+                    });
+            }
+
+            function getOrCreateCtx(phantom, cluster, rpcUrl) {
+                var te = getTe();
+                if (!te) throw new Error('Settle bundle missing. Run: bun run build:settle');
+                var key = phantom.publicKey.toBase58();
+                if (!settleCtx || settleCtxKey !== key) {
+                    settleCtx = te.getTimingEscrowClient(phantomWallet(phantom), cluster, rpcUrl);
+                    settleCtxKey = key;
+                }
+                return settleCtx;
+            }
+
+            function runSettle(phantom) {
+                if (settleInFlight) return Promise.resolve();
+                var te = getTe();
+                if (!te) {
+                    setStatus('Settle bundle missing.', true);
+                    return Promise.resolve();
+                }
+                if (!phantom || !phantom.publicKey) {
+                    setStatus('Connect Phantom first.', true);
+                    return Promise.resolve();
+                }
+
+                settleInFlight = true;
+                if (enterBtn) enterBtn.disabled = true;
+
+                var timeClicked = Math.floor(Date.now() / 1000);
+                var pk = phantom.publicKey;
+
+                return fetch('/api/timing-escrow-config')
+                    .then(function (r) {
+                        return r.json().then(function (j) {
+                            return { ok: r.ok, j: j };
+                        });
+                    })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error((res.j && res.j.error) || 'Config failed');
+                        var cfg = res.j;
+                        var ctx = getOrCreateCtx(phantom, cfg.cluster, cfg.rpcUrl);
+                        var vaultPda = te.getVaultPda(te.TIMING_ESCROW_PROGRAM_ID)[0];
+                        return te
+                            .computePenaltyLamports(ctx.connection, pk, vaultPda)
+                            .then(function (pen) {
+                                var vaultNote = pen.vaultExists
+                                    ? 'vault ' + pen.vaultLamports + ' lamports'
+                                    : 'vault PDA not created yet on this cluster';
+                                setStatus(
+                                    'Open Phantom to sign… timeClicked=' +
+                                        timeClicked +
+                                        ' balance_lamports=' +
+                                        pen.balanceLamports +
+                                        ' cost_lamports=' +
+                                        pen.costLamports +
+                                        ' (' +
+                                        vaultNote +
+                                        ')',
+                                    false
+                                );
+                                return te.settle(ctx, pk, {
+                                    costLamports: pen.costLamports,
+                                    timeClicked: timeClicked,
+                                });
+                            });
+                    })
+                    .then(function (out) {
+                        var sig = out && out.tx;
+                        setStatus(
+                            'Done. tx=' +
+                                sig +
+                                ' timeClicked=' +
+                                timeClicked +
+                                ' (instruction carries time + cost_lamports from balance, same as app)',
+                            false
+                        );
+                    })
+                    .catch(function (e) {
+                        var te2 = getTe();
+                        var logP = Promise.resolve();
+                        if (te2 && typeof te2.logSendTransactionError === 'function' && settleCtx && settleCtx.connection) {
+                            logP = Promise.resolve(te2.logSendTransactionError(e, settleCtx.connection));
+                        }
+                        return logP.then(function () {
+                            setStatus(formatTxError(e), true);
+                        });
+                    })
+                    .then(function () {
+                        settleInFlight = false;
+                        if (enterBtn && isLinked(phantom)) enterBtn.disabled = false;
+                    });
+            }
+
+            if (connectBtn) {
+                connectBtn.addEventListener('click', function () {
+                    connectPhantom();
+                });
+            }
+
+            if (enterBtn) {
+                enterBtn.addEventListener('click', function () {
+                    var p = getPhantom();
+                    if (!isLinked(p)) return;
+                    runSettle(p);
+                });
+            }
+
+            function tryRestoreSession() {
+                var p = getPhantom();
+                if (p && isLinked(p)) {
+                    bindProviderEvents(p);
+                    updateUiConnected(true);
+                } else {
+                    updateUiConnected(false);
+                }
+            }
+
+            window.addEventListener('load', function () {
+                tryRestoreSession();
+                setTimeout(tryRestoreSession, 600);
+            });
+        })();
+    </script>
+</body>
+</html>

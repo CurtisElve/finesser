@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - PUMP_PORTAL_API_KEY=${PUMP_PORTAL_API_KEY}
+      - PUMP_CREATION_FEE_SOL=0.021
+      - PUMP_EXTRA_BUFFER_SOL=0.002
+      - NODE_ENV=production
+    env_file:
+      - .env
