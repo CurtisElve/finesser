@@ -1,15 +1,17 @@
-# project
+## pump.IQ site
 
-To install dependencies:
+### Setup
+
+- **Install**:
 
 ```bash
 bun install
 ```
 
-To run:
+- **Configure**: copy `.env.example` to `.env` and set `SOLANA_RPC_URL` (and optionally `PORT`, `TIMING_ESCROW_PROGRAM_ID`).
+
+- **Run**:
 
 ```bash
-bun run index.ts
+bun start
 ```
-
-This project was created using `bun init` in bun v1.3.11. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

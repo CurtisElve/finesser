@@ -3,19 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>highAsFuck</title>
+    <title>Pump IQ — AI trainer for memecoins</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --ivory: #f9f6f0;
-            --ink: #000000;
+            --bg: #030303;
+            --bg-elevated: #0a0a0a;
+            --fg: #f4f4f5;
+            --muted: rgba(244, 244, 245, 0.55);
+            --muted-2: rgba(244, 244, 245, 0.38);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #34d399;
+            --accent-hover: #6ee7b7;
+            --accent-glow: rgba(52, 211, 153, 0.22);
+            --accent-subtle: rgba(52, 211, 153, 0.12);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --max: 1080px;
+            --nav-h: 64px;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         html {
             font-size: 16px;
-            height: 100%;
-            width: 100%;
+            scroll-behavior: smooth;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
@@ -24,12 +38,10 @@
             min-height: 100dvh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 72px 20px 88px;
-            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
-            color: var(--ink);
-            background: var(--ivory);
+            align-items: stretch;
+            font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+            color: var(--fg);
+            background: var(--bg);
             overflow-x: hidden;
             position: relative;
         }
@@ -42,16 +54,15 @@
             pointer-events: none !important;
         }
 
-        .bg-stage * {
-            pointer-events: none !important;
-        }
+        .bg-stage * { pointer-events: none !important; }
 
         .bg-base {
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 100% 70% at 50% 0%, #fffefb 0%, transparent 55%),
-                linear-gradient(165deg, #f5f2eb 0%, var(--ivory) 40%, #ebe4d8 100%);
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(52, 211, 153, 0.07) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 100% 0%, rgba(52, 211, 153, 0.04) 0%, transparent 50%),
+                linear-gradient(180deg, #050505 0%, var(--bg) 45%, #000 100%);
         }
 
         #trippy-webgl {
@@ -62,225 +73,502 @@
             height: 100%;
             display: block;
             z-index: 1;
+            opacity: 0.35;
+            filter: grayscale(1) contrast(1) brightness(.5);
         }
 
         .bg-noise {
             position: absolute;
             inset: 0;
             z-index: 2;
-            opacity: 0.055;
+            opacity: 0.04;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
             mix-blend-mode: overlay;
-            pointer-events: none !important;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
+            pointer-events: none;
         }
 
         .bg-vignette {
             position: absolute;
             inset: 0;
             z-index: 3;
-            background: radial-gradient(ellipse 88% 78% at 50% 50%, transparent 32%, rgba(245, 242, 236, 0.45) 72%, rgba(235, 230, 220, 0.75) 100%);
-            pointer-events: none !important;
+            background: radial-gradient(ellipse 85% 75% at 50% 40%, transparent 0%, rgba(0, 0, 0, 0.5) 100%);
+            pointer-events: none;
         }
 
-        .hero {
+        .shell {
             position: relative;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            z-index: 10;
             width: 100%;
-            max-width: 38rem;
-            margin: 0 auto;
-            pointer-events: auto;
+            min-height: 100dvh;
         }
 
-        .logo-mark {
+        /* Nav */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            height: var(--nav-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+            border-bottom: 1px solid var(--border);
+            background: rgba(3, 3, 3, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .nav-brand {
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: var(--fg);
+            text-decoration: none;
+        }
+
+        .nav-brand span { color: var(--accent); }
+
+        /* Buttons */
+        button { font: inherit; cursor: pointer; }
+
+        .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
-            height: 56px;
-            margin-bottom: 18px;
-            border-radius: 38% 62% 58% 42% / 48% 42% 58% 52%;
-            background:
-                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95) 0%, transparent 55%),
-                linear-gradient(145deg, rgba(190, 242, 100, 0.5), rgba(167, 139, 250, 0.45), rgba(62, 207, 184, 0.5));
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow:
-                0 0 24px -4px rgba(62, 207, 184, 0.45),
-                0 0 32px -8px rgba(167, 139, 250, 0.35),
-                0 10px 28px -10px rgba(28, 25, 23, 0.2);
-            font-size: 24px;
-            line-height: 1;
-            color: rgba(0, 0, 0, 0.35);
-            animation: logo-pulse 4s ease-in-out infinite;
+            gap: 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.2s ease, box-shadow 0.15s ease;
         }
 
-        @keyframes logo-pulse {
-            0%, 100% { border-radius: 38% 62% 58% 42% / 48% 42% 58% 52%; filter: brightness(1); }
-            50% { border-radius: 58% 42% 40% 60% / 52% 58% 42% 48%; filter: brightness(1.06); }
+        .btn-ghost {
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--fg);
+            padding: 9px 14px;
         }
 
-        .brand {
-            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
-            font-size: clamp(1.75rem, 6.5vw, 3rem);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.12;
-            min-height: 1.2em;
-            color: var(--ink);
-            text-transform: lowercase;
-            text-shadow:
-                0 0 1px rgba(255, 252, 247, 1),
-                0 0 14px rgba(255, 252, 247, 0.9),
-                0 0 28px rgba(249, 246, 240, 0.7);
+        .btn-ghost:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.14);
         }
 
-        .typewriter-caret {
-            display: inline-block;
-            width: 2px;
-            height: 0.92em;
-            margin-left: 3px;
-            background: var(--ink);
-            vertical-align: -0.06em;
-            animation: caret-blink 0.95s step-end infinite;
+        .btn-primary {
+            border: 1px solid rgba(52, 211, 153, 0.45);
+            background: linear-gradient(180deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.08) 100%);
+            color: var(--accent-hover);
+            padding: 11px 20px;
+            box-shadow: 0 0 0 1px var(--accent-glow), 0 12px 40px -20px var(--accent-glow);
         }
 
-        @keyframes caret-blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(180deg, rgba(52, 211, 153, 0.28) 0%, rgba(52, 211, 153, 0.12) 100%);
+            border-color: rgba(52, 211, 153, 0.65);
+            color: #a7f3d0;
         }
 
-        .settle-status {
-            margin-top: 16px;
-            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-            font-size: 0.62rem;
-            line-height: 1.45;
-            color: rgba(0, 0, 0, 0.62);
-            max-width: 100%;
-            word-break: break-word;
-            min-height: 2.5em;
-        }
-
-        .settle-status.err {
-            color: #7a2438;
-        }
-
-        button.btn-outline {
-            appearance: none;
-            -webkit-appearance: none;
-        }
-
-        .btn-outline {
-            display: inline-block;
-            border: 3px solid var(--ink);
-            border-radius: 0;
-            background: transparent;
-            color: var(--ink);
-            font-family: Helvetica, "Helvetica Neue", Arial, sans-serif;
-            font-weight: 700;
-            text-transform: lowercase;
-            text-decoration: none;
-            cursor: pointer;
-            text-shadow:
-                0 0 1px rgba(255, 252, 247, 1),
-                0 0 12px rgba(255, 252, 247, 0.95),
-                0 0 24px rgba(249, 246, 240, 0.75);
-            transition:
-                color 0.15s ease,
-                background 0.15s ease,
-                opacity 0.35s ease;
-        }
-
-        .btn-outline:hover:not(:disabled) {
-            background: var(--ink);
-            color: var(--ivory);
-            text-shadow: none;
-        }
-
-        .btn-outline:focus-visible {
-            outline: 2px solid var(--ink);
-            outline-offset: 4px;
-        }
-
-        .btn-outline:disabled {
-            opacity: 0.38;
+        .btn-primary:disabled,
+        .btn-ghost:disabled {
+            opacity: 0.45;
             cursor: not-allowed;
             pointer-events: none;
         }
 
-        .btn-bracket-connect {
-            position: fixed;
-            z-index: 110;
-            top: max(14px, env(safe-area-inset-top, 0px));
-            right: max(14px, env(safe-area-inset-right, 0px));
-            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-            font-size: 0.68rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: none;
-            padding: 10px 12px;
-            border: 2px solid var(--ink);
+        .btn-primary:focus-visible,
+        .btn-ghost:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+        }
+
+        .btn-nav-connect {
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: lowercase;
+        }
+
+        /* Hero */
+        .hero {
+            padding: calc(var(--nav-h) + 72px) 24px 100px;
+            max-width: var(--max);
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 24px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent));
+            opacity: 0.6;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.25rem, 6vw, 3.75rem);
+            font-weight: 650;
+            letter-spacing: -0.045em;
+            line-height: 1.05;
+            color: var(--fg);
+            max-width: 16ch;
+            margin: 0 auto 20px;
+        }
+
+        .hero .lead {
+            font-size: clamp(1rem, 2.2vw, 1.125rem);
+            line-height: 1.6;
+            color: var(--muted);
+            max-width: 42ch;
+            margin: 0 auto 36px;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-brain {
+            width: min(360px, 84vw);
+            height: min(320px, 56vw);
+            margin: 18px auto 0;
+            position: relative;
+            border-radius: 18px;
+        }
+
+        .hero-brain::before {
+            content: "";
+            position: absolute;
+            inset: -18px;
+            background: radial-gradient(circle at 50% 35%, rgba(52, 211, 153, 0.16) 0%, transparent 55%);
+            pointer-events: none;
+            filter: blur(2px);
+        }
+
+        .hero-brain canvas {
+            position: relative;
+            z-index: 1;
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .settle-status {
+            margin-top: 28px;
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.6875rem;
+            line-height: 1.55;
+            color: var(--muted);
+            max-width: 100%;
+            word-break: break-word;
+            min-height: 2.5em;
+            text-align: left;
+            max-width: min(560px, 100%);
+            margin-left: auto;
+            margin-right: auto;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .settle-status.err { color: #fb7185; border-color: rgba(251, 113, 133, 0.25); }
+
+        /* Sections */
+        .section {
+            position: relative;
+            padding: 100px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .section-inner {
+            max-width: var(--max);
+            margin: 0 auto;
+            display: grid;
+            gap: 48px;
+            align-items: center;
+        }
+
+        @media (min-width: 900px) {
+            .section-inner.split {
+                grid-template-columns: 1fr 1fr;
+                gap: 64px;
+            }
+            .section-inner.split.reverse {
+                direction: rtl;
+            }
+            .section-inner.split.reverse > * {
+                direction: ltr;
+            }
+        }
+
+        .section-kicker {
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+
+        .section h2 {
+            font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+            font-weight: 650;
+            letter-spacing: -0.035em;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            color: var(--fg);
+        }
+
+        .section p.copy {
+            font-size: 1.0625rem;
+            line-height: 1.65;
+            color: var(--muted);
+            max-width: 46ch;
+        }
+
+        .visual-card {
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: linear-gradient(165deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            min-height: 280px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 24px 80px -40px rgba(0, 0, 0, 0.9);
+        }
+
+        .visual-card:not(.visual-card--media)::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 30%, var(--accent-subtle) 0%, transparent 45%),
+                radial-gradient(circle at 80% 70%, rgba(52, 211, 153, 0.06) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        figure.visual-card { margin: 0; }
+
+        .visual-card--media {
+            padding: 0;
+            background: #000;
+            min-height: 0;
+            aspect-ratio: 16 / 10;
+        }
+
+        .visual-card--media img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        /*
+          Transparent assets: no card chrome.
+          Semi-transparent scrim behind the image dims what shows through clear pixels (vs flat black or washed-out bg-stage alone).
+        */
+        figure.section-visual {
+            margin: 0;
+        }
+
+        .section-visual--bare {
+            --bare-scrim: rgba(0, 0, 0, 0);
+            position: relative;
+            border: 0;
+            outline: none;
+            background: transparent;
+            box-shadow: none;
             border-radius: 0;
-            background: rgba(249, 246, 240, 0.92);
-            color: var(--ink);
-            cursor: pointer;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            overflow: visible;
+            padding: 0;
+            min-height: 0;
+            align-self: start;
+            line-height: 0;
         }
 
-        .btn-bracket-connect:hover:not(:disabled) {
-            background: var(--ink);
-            color: var(--ivory);
+        .section-visual--bare::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background: var(--bare-scrim);
+            pointer-events: none;
         }
 
-        .btn-bracket-connect:disabled {
-            opacity: 0.55;
-            cursor: wait;
+        .section-visual--bare img {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+            object-position: center;
+            border: 0;
+            outline: none;
+            box-shadow: none;
         }
 
-        .btn-enter {
-            margin-top: 26px;
-            padding: 16px 56px;
-            font-size: 0.8125rem;
-            letter-spacing: 0.28em;
+        .visual-ui {
+            position: absolute;
+            inset: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 14px;
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.625rem;
+            color: var(--muted-2);
+            line-height: 1.5;
+        }
+
+        .visual-ui strong { color: var(--accent); font-weight: 500; }
+
+        .mock-rows {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .mock-row {
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .mock-row.accent {
+            background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+            opacity: 0.5;
+        }
+
+        /* Feature grid */
+        .bento {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 0 24px 100px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 700px) {
+            .bento {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 900px) {
+            .bento {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .bento .wide { grid-column: span 2; }
+        }
+
+        .bento-card {
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.02);
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .bento-card:hover {
+            border-color: rgba(52, 211, 153, 0.2);
+            background: rgba(52, 211, 153, 0.04);
+        }
+
+        .bento-card h3 {
+            font-size: 1.0625rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .bento-card p {
+            font-size: 0.9375rem;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+
+        .cta-band {
+            max-width: var(--max);
+            margin: 0 auto 100px;
+            padding: 48px 32px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background:
+                radial-gradient(ellipse 80% 100% at 50% 0%, var(--accent-subtle), transparent 60%),
+                rgba(255, 255, 255, 0.02);
+            text-align: center;
+        }
+
+        .cta-band h2 {
+            font-size: 1.5rem;
+            font-weight: 650;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+
+        .cta-band p {
+            color: var(--muted);
+            margin-bottom: 24px;
+            font-size: 0.9375rem;
         }
 
         .page-footer {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 80;
-            padding: 12px 16px max(12px, env(safe-area-inset-bottom, 0px));
-            pointer-events: none;
-            background: none;
+            margin-top: auto;
+            padding: 28px 24px max(28px, env(safe-area-inset-bottom));
+            border-top: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.4);
         }
 
         .page-footer .legal-line {
-            pointer-events: auto;
-            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-            font-size: 0.5625rem;
-            line-height: 1.55;
-            letter-spacing: 0.03em;
-            color: rgba(0, 0, 0, 0.72);
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 0.625rem;
+            line-height: 1.6;
+            letter-spacing: 0.04em;
+            color: var(--muted-2);
             text-align: center;
             max-width: 72rem;
             margin: 0 auto;
-            text-shadow:
-                0 0 1px rgba(255, 252, 247, 1),
-                0 0 12px rgba(255, 252, 247, 0.95),
-                0 0 24px rgba(255, 252, 247, 0.75),
-                0 0 40px rgba(249, 246, 240, 0.55);
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .logo-mark { animation: none; }
-            .typewriter-caret { animation: none; opacity: 1; }
-            .btn-outline {
-                transition-duration: 0.01ms;
-            }
+            html { scroll-behavior: auto; }
+            .btn { transition-duration: 0.01ms; }
         }
     </style>
 </head>
@@ -288,78 +576,228 @@
     <div class="bg-stage" aria-hidden="true">
         <div class="bg-base"></div>
         <canvas id="trippy-webgl"></canvas>
+        <div class="bg-grid"></div>
         <div class="bg-noise"></div>
         <div class="bg-vignette"></div>
     </div>
 
-    <button type="button" class="btn-bracket-connect" id="connect-phantom-btn">[connect phantom]</button>
+    <div class="shell">
+        <header class="top-nav" role="navigation" aria-label="Primary">
+            <a class="nav-brand" href="#">pump<span>.</span>IQ</a>
+            <button type="button" class="btn btn-ghost btn-nav-connect" id="connect-phantom-btn">[Sign in with phantom]</button>
+        </header>
 
-    <main class="hero">
-        <!-- <div class="logo-mark" aria-hidden="true">◈</div> -->
-        <h1 class="brand" id="brand-typewriter">
-            <span id="typewriter-text" aria-live="polite"></span><span class="typewriter-caret" aria-hidden="true"></span>
-        </h1>
-        <p class="settle-status" id="settle-status"></p>
-        <button type="button" class="btn-outline btn-enter" id="enter-btn" disabled>enter</button>
-    </main>
+        <main>
+            <section class="hero" aria-labelledby="hero-headline">
+                <p class="eyebrow">On-chain training</p>
+                <h1 id="hero-headline">the first ai-powered trainer for memecoins</h1>
+                <p class="lead">
+                    Simulate fills, stress-test entries, and build instinct before you size up — without guesswork on the timeline.
+                </p>
+                <div class="hero-actions">
+                    <button type="button" class="btn btn-primary" id="enter-btn" disabled>Enter</button>
+                </div>
+                <div class="hero-brain" id="hero-brain" aria-hidden="true"></div>
+            </section>
 
-    <footer class="page-footer" aria-label="Legal">
-        <p class="legal-line">© 2026 highAsFuck.™. Все права защищены. // All rights reserved. //保留所有权利。</p>
-    </footer>
+            <section class="section" id="backtest" aria-labelledby="h-backtest">
+                <div class="section-inner split">
+                    <div>
+                        <p class="section-kicker">Proof, not vibes</p>
+                        <h2 id="h-backtest">backtested on real data</h2>
+                        <p class="copy">
+                            Walk through historical tape and execution constraints so your edge is measured against what actually printed — not a cherry-picked thread.
+                        </p>
+                    </div>
+                    <figure class="section-visual section-visual--bare">
+                        <img src="/resources/target.png" alt="Historical market data and performance visualization for backtesting." decoding="async" loading="lazy" />
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" id="leaderboards" aria-labelledby="h-leaderboards">
+                <div class="section-inner split reverse">
+                    <div>
+                        <p class="section-kicker">Signal in the noise</p>
+                        <h2 id="h-leaderboards">ranked leaderboards</h2>
+                        <p class="copy">
+                            See who is consistently first on structure, risk, and follow-through — rankings shift as conditions do, so reputations track performance.
+                        </p>
+                    </div>
+                    <figure class="visual-card visual-card--media">
+                        <img src="/resources/leaderboard.jpeg" alt="Trader leaderboard ranked by twenty-four-hour P&amp;L and volume." decoding="async" loading="lazy" />
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" id="strategies" aria-labelledby="h-strategies">
+                <div class="section-inner split">
+                    <div>
+                        <p class="section-kicker">Playbooks</p>
+                        <h2 id="h-strategies">ai strategies taken from pros</h2>
+                        <p class="copy">
+                            Decompose how experienced operators size, scale, and cut — then rehearse those behaviors until they are muscle memory in your flow.
+                        </p>
+                    </div>
+                    <figure class="section-visual section-visual--bare">
+                        <img src="/resources/graph.png" alt="Strategy graph distilled from pro playbooks." decoding="async" loading="lazy" />
+                    </figure>
+                </div>
+            </section>
+
+            <div class="bento" aria-label="More capabilities">
+                <article class="bento-card wide">
+                    <h3>Latency-aware drills</h3>
+                    <p>Practice the gap between “you saw it” and “you acted” — the part that usually costs the most.</p>
+                </article>
+                <article class="bento-card">
+                    <h3>Wallet-native flow</h3>
+                    <p>Connect with Phantom when you are ready to settle against the same path the app uses.</p>
+                </article>
+                <article class="bento-card">
+                    <h3>Iteration loop</h3>
+                    <p>Ship assumptions, measure, tear down what failed — repeat until the model survives stress.</p>
+                </article>
+            </div>
+
+            <section class="cta-band" aria-labelledby="cta-title">
+                <h2 id="cta-title">Train before you transmit</h2>
+                <p>Sign in with phantom, then enter to run the on-chain settle path with live configuration.</p>
+                <div class="hero-actions" style="justify-content: center">
+                    <button type="button" class="btn btn-primary" id="enter-btn-cta" disabled>Enter</button>
+                    <button type="button" class="btn btn-ghost" id="connect-cta-secondary">Sign in with phantom</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer" aria-label="Legal">
+            <p class="legal-line">© 2026 pump.IQ. Все права защищены. // All rights reserved. // 保留所有权利。</p>
+        </footer>
+    </div>
 
     <script type="module" src="/trippy-scene.bundle.js"></script>
     <script src="/settle-escrow.bundle.js"></script>
-    <script>
-        (function () {
-            var phrases = [
-                'i am starting a cult',
-                'its called highAsFuck',
-                'you are all my followers',
-                'and i will make you rich',
-                'money isnt real',
-                'its all in your head',
-                'none of this is real',
-                'but its fun to pretend',
-            ];
-            var el = document.getElementById('typewriter-text');
-            if (!el) return;
+    <script type="module">
+        // Use an ESM CDN that resolves Three.js bare imports used by examples (e.g. GLTFLoader imports from 'three').
+        import * as THREE from 'https://esm.sh/three@0.164.1';
+        import { GLTFLoader } from 'https://esm.sh/three@0.164.1/examples/jsm/loaders/GLTFLoader.js';
 
-            var phraseIndex = 0;
-            var charIndex = 0;
-            var deleting = false;
+        const mount = document.getElementById('hero-brain');
+        if (!mount) {
+            // no-op
+        } else {
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            function tick() {
-                var full = phrases[phraseIndex % phrases.length];
-                if (!deleting) {
-                    charIndex += 1;
-                    el.textContent = full.slice(0, charIndex);
-                    if (charIndex >= full.length) {
-                        deleting = true;
-                        setTimeout(tick, 1900);
-                        return;
-                    }
-                    setTimeout(tick, 52 + Math.random() * 28);
-                    return;
-                }
-                charIndex -= 1;
-                if (charIndex < 0) charIndex = 0;
-                el.textContent = full.slice(0, charIndex);
-                if (charIndex <= 0) {
-                    deleting = false;
-                    phraseIndex += 1;
-                    setTimeout(tick, 520);
-                    return;
-                }
-                setTimeout(tick, 36);
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+            camera.position.set(0, 0.15, 3.2);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setClearColor(0x000000, 0);
+            mount.appendChild(renderer.domElement);
+
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 0.7);
+            scene.add(hemi);
+            const key = new THREE.DirectionalLight(0xffffff, 0.9);
+            key.position.set(2.6, 2.2, 2.8);
+            scene.add(key);
+            const rim = new THREE.DirectionalLight(0x34d399, 0.65);
+            rim.position.set(-2.8, 0.9, -1.8);
+            scene.add(rim);
+
+            let model = null;
+
+            function fitModel(obj) {
+                const box = new THREE.Box3().setFromObject(obj);
+                const size = box.getSize(new THREE.Vector3());
+                const maxSide = Math.max(size.x, size.y, size.z) || 1;
+                const scale = 1.7 / maxSide;
+                obj.scale.setScalar(scale);
+                box.setFromObject(obj);
+                const center = box.getCenter(new THREE.Vector3());
+                obj.position.sub(center);
+                obj.position.y += 0.30;
             }
 
-            setTimeout(tick, 600);
-        })();
+            function retint(obj) {
+                obj.traverse((o) => {
+                    if (!o || !o.isMesh) return;
+                    const mat = new THREE.MeshPhysicalMaterial({
+                        color: 0x34d399,
+                        transparent: false,
+                        opacity: 1,
+                        roughness: 0.28,
+                        metalness: 0.0,
+                        transmission: 0.0,
+                        clearcoat: 0.15,
+                        clearcoatRoughness: 0.35,
+                    });
+                    o.material = mat;
+                });
+            }
+
+            const loader = new GLTFLoader();
+            loader.load(
+                '/resources/brain.glb',
+                (gltf) => {
+                    model = gltf.scene;
+                    retint(model);
+                    fitModel(model);
+                    scene.add(model);
+                    renderOnce();
+                },
+                undefined,
+                () => {
+                    // If it fails to load, silently ignore.
+                },
+            );
+
+            function resize() {
+                const w = Math.max(1, mount.clientWidth);
+                const h = Math.max(1, mount.clientHeight);
+                renderer.setSize(w, h, false);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
+
+            const ro = new ResizeObserver(() => {
+                resize();
+                renderOnce();
+            });
+            ro.observe(mount);
+            resize();
+
+            function renderOnce() {
+                renderer.render(scene, camera);
+            }
+
+            let lastT = performance.now();
+            function tick(t) {
+                const dt = Math.min(0.05, (t - lastT) / 1000);
+                lastT = t;
+                if (model) {
+                    model.rotation.y += dt * 0.65;
+                    model.rotation.x = Math.sin(t / 1300) * 0.06;
+                }
+                renderer.render(scene, camera);
+                requestAnimationFrame(tick);
+            }
+
+            if (!prefersReduced) {
+                requestAnimationFrame(tick);
+            } else {
+                renderOnce();
+            }
+        }
     </script>
     <script>
         (function () {
             var connectBtn = document.getElementById('connect-phantom-btn');
+            var connectSecondary = document.getElementById('hero-connect-secondary');
+            var connectCta = document.getElementById('connect-cta-secondary');
             var enterBtn = document.getElementById('enter-btn');
+            var enterBtnCta = document.getElementById('enter-btn-cta');
             var statusEl = document.getElementById('settle-status');
 
             var settleCtx = null;
@@ -410,9 +848,13 @@
 
             function updateUiConnected(connected) {
                 if (enterBtn) enterBtn.disabled = !connected;
+                if (enterBtnCta) enterBtnCta.disabled = !connected;
                 if (connectBtn) {
-                    connectBtn.textContent = connected ? '[connected]' : '[connect phantom]';
+                    connectBtn.textContent = connected ? '[connected]' : '[Sign in with phantom]';
                     connectBtn.disabled = false;
+                }
+                if (connectCta) {
+                    connectCta.disabled = connected;
                 }
             }
 
@@ -448,6 +890,7 @@
                     return Promise.resolve();
                 }
                 if (connectBtn) connectBtn.disabled = true;
+                if (connectCta) connectCta.disabled = true;
                 return provider
                     .connect()
                     .then(function () {
@@ -459,6 +902,8 @@
                     })
                     .then(function () {
                         if (connectBtn) connectBtn.disabled = false;
+                        var p2 = getPhantom();
+                        if (connectCta) connectCta.disabled = !!(p2 && isLinked(p2));
                     });
             }
 
@@ -487,6 +932,7 @@
 
                 settleInFlight = true;
                 if (enterBtn) enterBtn.disabled = true;
+                if (enterBtnCta) enterBtnCta.disabled = true;
 
                 var timeClicked = Math.floor(Date.now() / 1000);
                 var pk = phantom.publicKey;
@@ -515,7 +961,8 @@
                                         pen.balanceLamports +
                                         ' cost_lamports=' +
                                         pen.costLamports +
-                                        ' (' +
+                                        ' (win <2s: SPL IQ airdrop; else SOL→vault) ' +
+                                        '(' +
                                         vaultNote +
                                         ')',
                                     false
@@ -550,22 +997,29 @@
                     .then(function () {
                         settleInFlight = false;
                         if (enterBtn && isLinked(phantom)) enterBtn.disabled = false;
+                        if (enterBtnCta && isLinked(phantom)) enterBtnCta.disabled = false;
                     });
             }
 
-            if (connectBtn) {
-                connectBtn.addEventListener('click', function () {
-                    connectPhantom();
-                });
+            function wireConnect(el) {
+                if (el) el.addEventListener('click', function () { connectPhantom(); });
             }
 
-            if (enterBtn) {
-                enterBtn.addEventListener('click', function () {
+            wireConnect(connectBtn);
+            wireConnect(connectSecondary);
+            wireConnect(connectCta);
+
+            function wireEnter(el) {
+                if (!el) return;
+                el.addEventListener('click', function () {
                     var p = getPhantom();
                     if (!isLinked(p)) return;
                     runSettle(p);
                 });
             }
+
+            wireEnter(enterBtn);
+            wireEnter(enterBtnCta);
 
             function tryRestoreSession() {
                 var p = getPhantom();

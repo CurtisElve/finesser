@@ -4,8 +4,7 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/figlet": "^1.7.0"
+    "@types/bun": "latest"
   },
   "scripts": {
     "build:trippy": "bun build ./trippy-scene.js --outfile=./trippy-scene.bundle.js --target=browser --minify",
@@ -18,11 +17,8 @@
   },
   "dependencies": {
     "bs58": "^6.0.0",
-    "@metaplex-foundation/mpl-token-metadata": "2.13.0",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "figlet": "^1.11.0",
-    "solana": "^3.0.0",
     "three": "^0.183.2"
   }
 }
