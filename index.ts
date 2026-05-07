@@ -1,10 +1,19 @@
-import index from './index.html';
 import { timingEscrowConfig } from './api/timing-escrow-config';
 
 const PORT = (() => {
   const n = Number(process.env.PORT);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3000;
 })();
+
+// Important: serve HTML as a plain file, not as an imported module.
+// Importing `./index.html` makes Bun try to bundle/resolve absolute asset paths
+// like `/resources/...`, which can break in production.
+const INDEX_HTML = new Response(Bun.file(`${import.meta.dir}/index.html`), {
+  headers: {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+  },
+});
 
 const server = Bun.serve({
   port: PORT,
@@ -51,7 +60,7 @@ const server = Bun.serve({
         "Cache-Control": "public, max-age=86400",
       },
     }),
-    "/": index,
+    "/": INDEX_HTML,
   }
 });
 
