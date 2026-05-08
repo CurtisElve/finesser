@@ -16,6 +16,11 @@ export function timingEscrowConfig() {
   const rpcUrl =
     process.env.SOLANA_RPC_URL ?? 'https://api.mainnet-beta.solana.com';
   const cluster = inferCluster(rpcUrl);
+  const maxCostLamportsRaw = (process.env.TIMING_ESCROW_MAX_COST_LAMPORTS ?? '')
+    .trim();
+  const maxCostLamports = maxCostLamportsRaw
+    ? Math.max(0, Math.floor(Number(maxCostLamportsRaw)))
+    : null;
   const raw = (
     process.env.TIMING_ESCROW_PROGRAM_ID || DEFAULT_TIMING_ESCROW_PROGRAM
   ).trim();
@@ -25,6 +30,7 @@ export function timingEscrowConfig() {
       cluster,
       rpcUrl,
       programId,
+      maxCostLamports,
     });
   } catch {
     return Response.json(

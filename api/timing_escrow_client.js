@@ -2,14 +2,13 @@
 /**
  * timing_escrow browser client — Quasar on-chain layout (no Anchor).
  *
- * Instruction data: 1-byte discriminator + little-endian fixed args (see program `#[instruction]`).
+ * Settle instruction data: 1-byte discriminator + i64 `time_clicked` (see program `#[instruction(discriminator = 1)]`).
  * Deps: @solana/web3.js, @solana/spl-token, bs58
  */
 
 import {
   Keypair,
   PublicKey,
-  SystemProgram,
   SendTransactionError,
   Transaction,
   TransactionInstruction,
@@ -58,19 +57,6 @@ export function getUserIqAta(userPubkey) {
   
     
   
-  function setU64LE(u8, offset, value) {
-  
-  new DataView(u8.buffer, u8.byteOffset + offset, 8).setBigUint64(
-  
-  0,
-  
-  BigInt(value),
-  
-  true
-  
-  );
-  
-  }
   
     
   
@@ -90,15 +76,14 @@ export function getUserIqAta(userPubkey) {
   
     
   
-  export function buildSettleInstructionData(timeClicked, costLamports) {
+  /** Matches Quasar `#[instruction(discriminator = 1)] settle(..., time_clicked: i64)`. */
+  export function buildSettleInstructionData(timeClicked) {
   
-  const data = new Uint8Array(17);
+  const data = new Uint8Array(9);
   
   data[0] = 1;
   
   setI64LE(data, 1, timeClicked);
-  
-  setU64LE(data, 9, costLamports);
   
   return data;
   
@@ -822,7 +807,7 @@ async function waitForSignatureConfirmedOrExpired(
   
   * @param {PublicKey} userPubkey
   
-  * @param {{ costLamports: number, timeClicked?: number, vault?: PublicKey }} opts
+  * @param {{ timeClicked?: number, vault?: PublicKey }} opts
   
   */
   
@@ -838,10 +823,6 @@ async function waitForSignatureConfirmedOrExpired(
   
     
   
-  const costLamports = Math.max(0, Math.floor(Number(opts.costLamports)));
-  
-    
-  
   const { connection, wallet, programId } = ctx;
   
   const vaultPubkey =
@@ -850,7 +831,7 @@ async function waitForSignatureConfirmedOrExpired(
   
     
   
-  // Token reward accounts (win path). The program creates the user's ATA on demand.
+  /** User IQ ATA — must exist before settle (fund/create off-chain or add an ix). */
   
   const userAta = deriveAta(userPubkey, IQ_MINT);
   
@@ -866,31 +847,15 @@ async function waitForSignatureConfirmedOrExpired(
   
   { pubkey: vaultPubkey, isSigner: false, isWritable: true },
   
-  { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  
-  // Remaining accounts for SPL reward CPI (see on-chain `settle`).
-  
-  { pubkey: IQ_MINT, isSigner: false, isWritable: false },
-  
   { pubkey: VAULT_IQ_ATA, isSigner: false, isWritable: true },
   
   { pubkey: userAta, isSigner: false, isWritable: true },
   
   { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
   
-  {
-  
-  pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
-  
-  isSigner: false,
-  
-  isWritable: false,
-  
-  },
-  
   ],
   
-  data: buildSettleInstructionData(timeClicked, costLamports),
+  data: buildSettleInstructionData(timeClicked),
   
   });
   
@@ -906,6 +871,26 @@ async function waitForSignatureConfirmedOrExpired(
   
   tx.recentBlockhash = blockhash;
   
+  // Prefer wallet-native "sign and send" when available (Phantom exposes this).
+  // This can reduce wallet security warnings vs custom raw sends.
+  if (typeof wallet?.signAndSendTransaction === "function") {
+    const out = await wallet.signAndSendTransaction(tx, {
+      preflightCommitment: "processed",
+      maxRetries: 3,
+    });
+    const signature = out?.signature || out;
+    if (typeof signature !== "string") {
+      throw new Error("Wallet signAndSendTransaction returned no signature");
+    }
+    await waitForSignatureConfirmedOrExpired(connection, signature, {
+      lastValidBlockHeight,
+      commitment: "confirmed",
+      maxMs: 45_000,
+    });
+    console.log("settle tx:", signature);
+    return { tx: signature, timeClicked };
+  }
+
   const signed = await wallet.signTransaction(tx);
   
     

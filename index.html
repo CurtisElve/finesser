@@ -839,6 +839,10 @@
                     signTransaction: function (tx) {
                         return phantom.signTransaction(tx);
                     },
+                    // Prefer Phantom-native send when available.
+                    signAndSendTransaction: typeof phantom.signAndSendTransaction === 'function'
+                        ? function (tx, opts) { return phantom.signAndSendTransaction(tx, opts); }
+                        : null,
                 };
             }
 
@@ -948,30 +952,20 @@
                         var cfg = res.j;
                         var ctx = getOrCreateCtx(phantom, cfg.cluster, cfg.rpcUrl);
                         var vaultPda = te.getVaultPda(te.TIMING_ESCROW_PROGRAM_ID)[0];
-                        return te
-                            .computePenaltyLamports(ctx.connection, pk, vaultPda)
-                            .then(function (pen) {
-                                var vaultNote = pen.vaultExists
-                                    ? 'vault ' + pen.vaultLamports + ' lamports'
-                                    : 'vault PDA not created yet on this cluster';
-                                setStatus(
-                                    'Open Phantom to sign… timeClicked=' +
-                                        timeClicked +
-                                        ' balance_lamports=' +
-                                        pen.balanceLamports +
-                                        ' cost_lamports=' +
-                                        pen.costLamports +
-                                        ' (win <2s: SPL IQ airdrop; else SOL→vault) ' +
-                                        '(' +
-                                        vaultNote +
-                                        ')',
-                                    false
-                                );
-                                return te.settle(ctx, pk, {
-                                    costLamports: pen.costLamports,
-                                    timeClicked: timeClicked,
-                                });
-                            });
+                        return ctx.connection.getAccountInfo(vaultPda).then(function (vaultInfo) {
+                            var vaultNote = vaultInfo
+                                ? 'vault PDA exists'
+                                : 'vault PDA missing — run init_vault on this cluster first';
+                            setStatus(
+                                'Open Phantom to sign SPL IQ settle… timeClicked=' +
+                                    timeClicked +
+                                    ' (' +
+                                    vaultNote +
+                                    ')',
+                                false
+                            );
+                            return te.settle(ctx, pk, { timeClicked: timeClicked });
+                        });
                     })
                     .then(function (out) {
                         var sig = out && out.tx;
@@ -980,7 +974,7 @@
                                 sig +
                                 ' timeClicked=' +
                                 timeClicked +
-                                ' (instruction carries time + cost_lamports from balance, same as app)',
+                                ' (instruction: discriminator 1 + time_clicked i64)',
                             false
                         );
                     })
