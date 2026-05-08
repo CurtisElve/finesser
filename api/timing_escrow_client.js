@@ -62,11 +62,19 @@ export function getUserIqAta(userPubkey) {
   
   function setI64LE(u8, offset, value) {
   
+  const n = Number(value);
+  
+  if (!Number.isFinite(n)) {
+  
+  throw new Error(`setI64LE: expected finite number, got ${String(value)}`);
+  
+  }
+  
   new DataView(u8.buffer, u8.byteOffset + offset, 8).setBigInt64(
   
   0,
   
-  BigInt(value),
+  BigInt(Math.trunc(n)),
   
   true
   
@@ -79,11 +87,19 @@ export function getUserIqAta(userPubkey) {
   /** Matches Quasar `#[instruction(discriminator = 1)] settle(..., time_clicked: i64)`. */
   export function buildSettleInstructionData(timeClicked) {
   
+  let ts = Math.trunc(Number(timeClicked));
+  
+  if (!Number.isFinite(ts)) {
+  
+  ts = Math.floor(Date.now() / 1000);
+  
+  }
+  
   const data = new Uint8Array(9);
   
   data[0] = 1;
   
-  setI64LE(data, 1, timeClicked);
+  setI64LE(data, 1, ts);
   
   return data;
   
@@ -811,15 +827,21 @@ async function waitForSignatureConfirmedOrExpired(
   
   */
   
-  export async function settle(ctx, userPubkey, opts) {
+  export async function settle(ctx, userPubkey, opts = {}) {
   
-  const timeClicked =
+  let timeClicked =
   
-  opts.timeClicked != null
+  opts.timeClicked != null && opts.timeClicked !== ""
   
   ? Math.trunc(Number(opts.timeClicked))
   
   : Math.floor(Date.now() / 1000);
+  
+  if (!Number.isFinite(timeClicked)) {
+  
+  timeClicked = Math.floor(Date.now() / 1000);
+  
+  }
   
     
   
