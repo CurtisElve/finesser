@@ -794,7 +794,6 @@
     <script>
         (function () {
             var connectBtn = document.getElementById('connect-phantom-btn');
-            var connectSecondary = document.getElementById('hero-connect-secondary');
             var connectCta = document.getElementById('connect-cta-secondary');
             var enterBtn = document.getElementById('enter-btn');
             var enterBtnCta = document.getElementById('enter-btn-cta');
@@ -947,23 +946,28 @@
                         if (!res.ok) throw new Error((res.j && res.j.error) || 'Config failed');
                         var cfg = res.j;
                         var ctx = getOrCreateCtx(phantom, cfg.cluster, cfg.rpcUrl);
-                        var vaultPda = te.getVaultPda(te.TIMING_ESCROW_PROGRAM_ID)[0];
                         return te
-                            .computePenaltyLamports(ctx.connection, pk, vaultPda)
+                            .computePenaltyLamports(ctx.connection, pk)
                             .then(function (pen) {
                                 var vaultNote = pen.vaultExists
                                     ? 'vault ' + pen.vaultLamports + ' lamports'
-                                    : 'vault PDA not created yet on this cluster';
+                                    : 'vault PDA missing — run init_vault on this cluster';
+                                var winNote = pen.canWin
+                                    ? 'win possible (' + te.WIN_REWARD_LAMPORTS + ' lamports)'
+                                    : 'vault underfunded for win';
                                 setStatus(
-                                    'Open Phantom to sign… timeClicked=' +
+                                    'Sign in Phantom… timeClicked=' +
                                         timeClicked +
-                                        ' balance_lamports=' +
-                                        pen.balanceLamports +
-                                        ' cost_lamports=' +
+                                        ' | win if confirmed within ' +
+                                        te.WIN_ELAPSED_MAX_SEC +
+                                        's → ' +
+                                        te.WIN_REWARD_LAMPORTS +
+                                        ' lamports | else cost_lamports=' +
                                         pen.costLamports +
-                                        ' (SOL transfer to vault PDA per on-chain settle) ' +
-                                        '(' +
+                                        ' (' +
                                         vaultNote +
+                                        '; ' +
+                                        winNote +
                                         ')',
                                     false
                                 );
@@ -976,23 +980,20 @@
                     .then(function (out) {
                         var sig = out && out.tx;
                         setStatus(
-                            'Done. tx=' +
+                            'Confirmed. tx=' +
                                 sig +
                                 ' timeClicked=' +
                                 timeClicked +
-                                ' (instruction carries time + cost_lamports from balance, same as app)',
+                                ' — program pays ' +
+                                te.WIN_REWARD_LAMPORTS +
+                                ' lamports if on-chain elapsed < ' +
+                                te.WIN_ELAPSED_MAX_SEC +
+                                's, else transfers cost_lamports to vault',
                             false
                         );
                     })
                     .catch(function (e) {
-                        var te2 = getTe();
-                        var logP = Promise.resolve();
-                        if (te2 && typeof te2.logSendTransactionError === 'function' && settleCtx && settleCtx.connection) {
-                            logP = Promise.resolve(te2.logSendTransactionError(e, settleCtx.connection));
-                        }
-                        return logP.then(function () {
-                            setStatus(formatTxError(e), true);
-                        });
+                        setStatus(formatTxError(e), true);
                     })
                     .then(function () {
                         settleInFlight = false;
@@ -1006,7 +1007,6 @@
             }
 
             wireConnect(connectBtn);
-            wireConnect(connectSecondary);
             wireConnect(connectCta);
 
             function wireEnter(el) {

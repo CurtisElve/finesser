@@ -1,19 +1,19 @@
 import {
   settle,
   computePenaltyLamports,
-  confirmSignatureHttpPolling,
   getTimingEscrowClient,
   getVaultPda,
   TIMING_ESCROW_PROGRAM_ID,
-  logSendTransactionError,
-} from './api/timing_escrow_client.js';
+  WIN_ELAPSED_MAX_SEC,
+  WIN_REWARD_LAMPORTS,
+} from "./api/timing_escrow_client.js";
 
 globalThis.__timingEscrow = {
   settle,
   computePenaltyLamports,
-  confirmSignatureHttpPolling,
   getTimingEscrowClient,
   getVaultPda,
   TIMING_ESCROW_PROGRAM_ID,
-  logSendTransactionError,
+  WIN_ELAPSED_MAX_SEC,
+  WIN_REWARD_LAMPORTS,
 };
