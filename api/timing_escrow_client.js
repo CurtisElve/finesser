@@ -35,6 +35,14 @@ export const WIN_REWARD_LAMPORTS = 100_000_000;
 /** Lamports left in the user wallet after computing loss `cost_lamports` (fees + rent). */
 export const TX_FEE_HEADROOM_LAMPORTS = 250_000;
 
+/** Default wait after `signTransaction`, before `sendRawTransaction` (ms). */
+export const POST_SIGN_SEND_DELAY_MS = 5_000;
+
+/** @param {number} ms */
+export function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function setU64LE(u8, offset, value) {
   new DataView(u8.buffer, u8.byteOffset + offset, 8).setBigUint64(
     0,
@@ -233,6 +241,21 @@ export async function settle(ctx, userPubkey, opts) {
     signed.serialize() instanceof Uint8Array
       ? signed.serialize()
       : new Uint8Array(signed.serialize());
+
+  // Signed bytes stay local until sendRawTransaction — safe to wait here.
+  const sendDelayMs = Math.max(
+    0,
+    Math.floor(Number(opts.sendDelayMs ?? POST_SIGN_SEND_DELAY_MS)),
+  );
+  if (sendDelayMs > 0) {
+    await delay(sendDelayMs);
+    const height = await connection.getBlockHeight("confirmed");
+    if (height > lastValidBlockHeight) {
+      throw new Error(
+        "Blockhash expired while waiting to send. Approve again.",
+      );
+    }
+  }
 
   const signature = await connection.sendRawTransaction(raw, {
     skipPreflight: false,
